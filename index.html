@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIVA — Better Immersive Vanilla Addons</title>
+    <meta name="description" content="Enhancing Minecraft: Bedrock Edition without losing the authentic vanilla experience. Discover high-quality .mcaddon, .mcpack, and .mcworld downloads.">
+    
+    <!-- Open Graph / Meta -->
+    <meta property="og:title" content="BIVA — Better Immersive Vanilla Addons">
+    <meta property="og:description" content="Enhancing Minecraft, without losing the vanilla experience.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://mahi902.github.io/BIVA/">
+    
+    <!-- Favicon & Styling -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌿</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Skip link for accessibility -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <!-- Navigation Header -->
+    <header class="navbar" id="navbar">
+        <div class="nav-container">
+            <a href="#/" class="brand-logo" aria-label="BIVA Home">
+                <span class="logo-icon" aria-hidden="true">
+                    <span class="pixel-block grass"></span>
+                </span>
+                <div class="brand-text">
+                    <span class="brand-title">BIVA</span>
+                    <span class="brand-sub">Bedrock Addons</span>
+                </div>
+            </a>
+
+            <!-- Quick Search Bar in Header -->
+            <div class="nav-search-wrapper" role="search">
+                <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" id="nav-search-input" placeholder="Search addons, worlds, creators..." aria-label="Quick search addons">
+                <button type="button" class="clear-btn hidden" id="nav-search-clear" aria-label="Clear search">&times;</button>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="nav-links" id="nav-menu">
+                <a href="#/browse" class="nav-link" id="link-browse">Discover</a>
+                <a href="#/categories" class="nav-link" id="link-categories">Categories</a>
+                <a href="#/about" class="nav-link" id="link-about">About</a>
+                <a href="https://github.com/mahi902/BIVA" target="_blank" rel="noopener noreferrer" class="nav-link icon-link" aria-label="GitHub Repository">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                </a>
+                <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+                    <span class="theme-icon sun">☀️</span>
+                    <span class="theme-icon moon">🌙</span>
+                </button>
+            </nav>
+
+            <!-- Mobile Hamburger Toggle -->
+            <button type="button" class="mobile-toggle" id="mobile-toggle" aria-expanded="false" aria-controls="nav-menu" aria-label="Toggle menu">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </button>
+        </div>
+    </header>
+
+    <main id="main-content">
+        <!-- APP VIEW CONTAINER (Dynamic SPA Views) -->
+        <div id="app-view"></div>
+    </main>
+
+    <!-- Global Screenshot Lightbox Modal -->
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Image preview" tabindex="-1">
+        <div class="lightbox-overlay" id="lightbox-backdrop"></div>
+        <div class="lightbox-content">
+            <button type="button" class="lightbox-close" id="lightbox-close" aria-label="Close preview">&times;</button>
+            <img src="" id="lightbox-img" alt="Enlarged screenshot">
+            <p id="lightbox-caption" class="lightbox-caption"></p>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <div class="brand-logo footer-logo">
+                    <span class="logo-icon"><span class="pixel-block grass"></span></span>
+                    <span class="brand-title">BIVA</span>
+                </div>
+                <p class="motto">Enhancing Minecraft, without losing the vanilla experience.</p>
+            </div>
+            <div class="footer-links">
+                <a href="#/browse">Discover</a>
+                <a href="#/categories">Categories</a>
+                <a href="#/about">About BIVA</a>
+                <a href="https://github.com/mahi902/BIVA" target="_blank" rel="noopener">GitHub</a>
+            </div>
+            <div class="footer-disclaimer">
+                <p>&copy; 2026 BIVA Community. All rights reserved.</p>
+                <p class="legal-notice">BIVA is an independent community platform and is not affiliated with, endorsed by, or associated with Mojang AB or Microsoft Corporation. "Minecraft" is a registered trademark of Mojang Synergies AB.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Application Script -->
+    <script src="script.js"></script>
+</body>
+</html>
