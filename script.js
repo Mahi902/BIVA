@@ -1,23 +1,16 @@
 /**
- * BIVA — Better Immersive Vanilla Addons
- * Modern Static Single Page Application Engine
+ * BIVA — Better Immersive Vanilla Addons Platform Engine
  */
 
 (function () {
     'use strict';
 
-    // --- Configuration & Flexible Schema Mapping ---
     const CONFIG = {
         DATA_URL: 'https://mahi902.github.io/BIVA/packs.json',
         LOCAL_FALLBACK_URL: './packs.json',
-        DEBOUNCE_MS: 200,
-        ITEMS_PER_PAGE: 24
+        DEBOUNCE_MS: 200
     };
 
-    /**
-     * Flexible Property Adapter.
-     * Prevents site breakdown if packs.json field keys change in future schema updates.
-     */
     const SchemaAdapter = {
         getId: item => item.id || item.uuid || item.slug || '',
         getName: item => item.name || item.title || 'Untitled Addon',
@@ -27,33 +20,31 @@
         getCategory: item => item.category || 'Utility',
         getType: item => item.type || item.fileType || 'mcaddon',
         getVersion: item => item.version || '1.0.0',
-        getMcVersion: item => item.mcVersion || item.minecraft_version || item.mc_version || '1.20+',
-        getRating: item => parseFloat(item.rating || item.stars || 0),
+        getMcVersion: item => item.mcVersion || item.minecraft_version || '1.20+',
+        getRating: item => parseFloat(item.rating || 0),
         getRatingUrl: item => item.ratingUrl || item.rating_url || '',
-        getDownloadUrl: item => item.download || item.downloadUrl || item.download_url || '#',
+        getDownloadUrl: item => item.download || item.downloadUrl || '#',
         getThumbnail: item => item.thumbnail || item.icon || item.image || '',
-        getScreenshots: item => Array.isArray(item.screenshots) ? item.screenshots : (item.gallery || []),
+        getScreenshots: item => Array.isArray(item.screenshots) ? item.screenshots : [],
         getChangelog: item => item.changelog || '',
         getTags: item => Array.isArray(item.tags) ? item.tags : [],
         isFeatured: item => Boolean(item.featured || item.is_featured),
-        getUpdatedDate: item => item.updatedDate || item.updated_at || item.releaseDate || ''
+        getUpdatedDate: item => item.updatedDate || item.releaseDate || ''
     };
 
-    // --- Application State ---
     const state = {
         packs: [],
         categories: new Set(),
         searchQuery: '',
         selectedCategory: 'All',
         sortBy: 'recommended',
-        activeView: 'browse', // 'browse', 'pack', 'about'
+        activeView: 'browse',
         activePackId: null,
         loading: true,
         error: null,
         theme: localStorage.getItem('biva_theme') || 'dark'
     };
 
-    // --- DOM Cache ---
     const DOM = {};
 
     function cacheDOM() {
@@ -71,7 +62,6 @@
         DOM.toastContainer = document.getElementById('toast-container');
     }
 
-    // --- Helper Utility Functions ---
     function sanitizeText(str) {
         if (!str) return '';
         const div = document.createElement('div');
@@ -87,204 +77,140 @@
         };
     }
 
-    function showToast(message) {
+    function showToast(msg) {
         const toast = document.createElement('div');
         toast.className = 'toast';
-        toast.textContent = message;
+        toast.textContent = msg;
         DOM.toastContainer.appendChild(toast);
-        setTimeout(() => toast.remove(), 3500);
+        setTimeout(() => toast.remove(), 3200);
     }
 
-    // --- Data Fetching Engine ---
     async function fetchPacks() {
         state.loading = true;
-        state.error = null;
         renderLoadingState();
 
         try {
-            let response;
+            let res;
             try {
-                response = await fetch(CONFIG.DATA_URL, { cache: 'no-cache' });
-                if (!response.ok) throw new Error('Remote JSON load failed');
-            } catch (err) {
-                // Fallback to local file if GitHub Pages URL fails during offline/dev
-                response = await fetch(CONFIG.LOCAL_FALLBACK_URL);
+                res = await fetch(CONFIG.DATA_URL, { cache: 'no-cache' });
+                if (!res.ok) throw new Error();
+            } catch {
+                res = await fetch(CONFIG.LOCAL_FALLBACK_URL);
             }
 
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            
-            const data = await response.json();
-            
-            if (!Array.isArray(data)) {
-                throw new Error('Invalid data structure received from database.');
-            }
+            if (!res.ok) throw new Error('HTTP failure');
+            const data = await res.json();
 
             state.packs = data;
-            
-            // Dynamically collect unique categories
             state.categories.clear();
             state.categories.add('All');
-            data.forEach(pack => {
-                const cat = SchemaAdapter.getCategory(pack);
+            data.forEach(p => {
+                const cat = SchemaAdapter.getCategory(p);
                 if (cat) state.categories.add(cat);
             });
 
             state.loading = false;
-            handleRoute(); // Render current active route
-        } catch (error) {
-            console.error('BIVA Fetch Error:', error);
+            handleRoute();
+        } catch (err) {
             state.loading = false;
             state.error = 'Couldn\'t load the addon library. Please check your connection.';
             renderErrorState();
         }
     }
 
-    // --- Router & Hash Handling ---
     function handleRoute() {
         const hash = window.location.hash || '#/';
-        
-        // Reset Mobile Menu if open
         DOM.navMenu.classList.remove('mobile-open');
 
         if (hash.startsWith('#/pack/')) {
             const packId = hash.replace('#/pack/', '').trim();
             state.activeView = 'pack';
-            state.activePackId = packId;
             renderPackDetailView(packId);
         } else if (hash.startsWith('#/categories')) {
             state.activeView = 'browse';
-            renderBrowseView(true); // Focus categories
+            renderBrowseView(true);
         } else if (hash.startsWith('#/about')) {
             state.activeView = 'about';
             renderAboutView();
-        } else { // Default '#/' or '#/browse'
+        } else {
             state.activeView = 'browse';
             renderBrowseView();
         }
 
-        updateActiveNavLinks(hash);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    function updateActiveNavLinks(hash) {
-        document.querySelectorAll('.nav-link').forEach(link => {
-            const href = link.getAttribute('href');
-            if (href === hash || (hash === '#/' && href === '#/browse')) {
-                link.classList.add('active');
-            } else {
-                link.classList.remove('active');
-            }
-        });
-    }
-
-    // --- Search & Filtering Processing ---
     function getFilteredPacks() {
         return state.packs.filter(pack => {
             const query = state.searchQuery.toLowerCase().trim();
-            
-            // Category Match
             const categoryMatch = (state.selectedCategory === 'All') || 
                 (SchemaAdapter.getCategory(pack).toLowerCase() === state.selectedCategory.toLowerCase());
 
             if (!categoryMatch) return false;
             if (!query) return true;
 
-            // Multi-field Search Match
             const name = SchemaAdapter.getName(pack).toLowerCase();
             const desc = SchemaAdapter.getDescription(pack).toLowerCase();
             const creator = SchemaAdapter.getCreator(pack).toLowerCase();
             const cat = SchemaAdapter.getCategory(pack).toLowerCase();
-            const type = SchemaAdapter.getType(pack).toLowerCase();
             const tags = SchemaAdapter.getTags(pack).join(' ').toLowerCase();
-            const mcVer = SchemaAdapter.getMcVersion(pack).toLowerCase();
 
-            return name.includes(query) || 
-                   desc.includes(query) || 
-                   creator.includes(query) || 
-                   cat.includes(query) || 
-                   type.includes(query) || 
-                   tags.includes(query) ||
-                   mcVer.includes(query);
+            return name.includes(query) || desc.includes(query) || creator.includes(query) || cat.includes(query) || tags.includes(query);
         }).sort((a, b) => {
-            if (state.sortBy === 'newest') {
-                return new Date(SchemaAdapter.getUpdatedDate(b) || 0) - new Date(SchemaAdapter.getUpdatedDate(a) || 0);
-            } else if (state.sortBy === 'rating') {
-                return SchemaAdapter.getRating(b) - SchemaAdapter.getRating(a);
-            } else if (state.sortBy === 'alphabetical') {
-                return SchemaAdapter.getName(a).localeCompare(SchemaAdapter.getName(b));
-            }
-            // Recommended default: Featured first, then rating
+            if (state.sortBy === 'newest') return new Date(SchemaAdapter.getUpdatedDate(b) || 0) - new Date(SchemaAdapter.getUpdatedDate(a) || 0);
+            if (state.sortBy === 'rating') return SchemaAdapter.getRating(b) - SchemaAdapter.getRating(a);
+            if (state.sortBy === 'alphabetical') return SchemaAdapter.getName(a).localeCompare(SchemaAdapter.getName(b));
             return (SchemaAdapter.isFeatured(b) ? 1 : 0) - (SchemaAdapter.isFeatured(a) ? 1 : 0);
         });
     }
 
-    // --- View Renderers ---
-
-    // 1. Loading View
     function renderLoadingState() {
         DOM.appView.innerHTML = `
-            <div class="container">
-                <div class="empty-state">
-                    <div class="pixel-block grass" style="width: 40px; height: 40px; margin-bottom: 16px;"></div>
-                    <h2 class="empty-title">Loading Addon Library...</h2>
-                    <p class="empty-desc">Fetching the latest vanilla-friendly Bedrock creations.</p>
-                </div>
-                <div class="addon-grid">
-                    ${Array(8).fill(0).map(() => `<div class="skeleton skeleton-card"></div>`).join('')}
+            <div class="container" style="text-align:center; padding: 64px 24px;">
+                <div class="mc-panel" style="padding: 48px; max-width: 500px; margin: 0 auto;">
+                    <h2 style="font-family: var(--font-pixel); color: var(--accent-gold); font-size: 1rem; margin-bottom: 12px;">LOADING ADDONS...</h2>
+                    <p style="color: var(--text-muted);">Fetching the latest Minecraft Bedrock library.</p>
                 </div>
             </div>
         `;
     }
 
-    // 2. Error View
     function renderErrorState() {
         DOM.appView.innerHTML = `
-            <div class="container">
-                <div class="error-state">
-                    <div class="empty-icon">⚠️</div>
-                    <h2 class="empty-title">Connection Failure</h2>
-                    <p class="empty-desc">${sanitizeText(state.error)}</p>
-                    <button type="button" class="btn btn-primary" id="retry-btn">
-                        ↻ Retry Connection
-                    </button>
+            <div class="container" style="text-align:center; padding: 64px 24px;">
+                <div class="mc-panel" style="padding: 48px; max-width: 500px; margin: 0 auto;">
+                    <h2 style="font-family: var(--font-pixel); color: #ff5555; font-size: 1rem; margin-bottom: 12px;">CONNECTION ERROR</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 24px;">${sanitizeText(state.error)}</p>
+                    <button type="button" class="mc-btn mc-btn-green" id="retry-btn">Retry Connection</button>
                 </div>
             </div>
         `;
         document.getElementById('retry-btn')?.addEventListener('click', fetchPacks);
     }
 
-    // 3. Main Browse / Homepage View
     function renderBrowseView(focusCategories = false) {
         if (state.loading) return;
 
         const filteredPacks = getFilteredPacks();
-        const featuredPacks = state.packs.filter(p => SchemaAdapter.isFeatured(p));
 
         const html = `
-            <!-- Hero Section -->
-            <section class="hero">
-                <div class="hero-content">
-                    <span class="hero-badge">🌿 100% Minecraft Bedrock</span>
-                    <h1 class="hero-title">Better Immersive Vanilla Addons</h1>
-                    <p class="hero-motto">“Enhancing Minecraft, without losing the vanilla experience.”</p>
-                    <div class="hero-actions">
-                        <a href="#browse-section" class="btn btn-primary">Browse Addons</a>
-                        <a href="#/about" class="btn btn-secondary">Learn Philosophy</a>
+            <!-- Full-Width Cover Banner Hero Screen -->
+            <section class="hero-cover-container">
+                <img src="https://mahi902.github.io/BIVA/assets/76883807-b5e2-4837-bdf4-e5858cf838c3.png" alt="BIVA Banner Cover" class="hero-cover-img">
+                <div class="hero-sub-bar">
+                    <div class="hero-sub-content">
+                        <span class="hero-motto-text">Enhancing Minecraft, without losing the vanilla experience.</span>
+                        <div class="hero-actions">
+                            <a href="#browse-section" class="mc-btn mc-btn-green">Browse Addons</a>
+                            <a href="#/about" class="mc-btn mc-btn-stone">About Philosophy</a>
+                        </div>
                     </div>
                 </div>
             </section>
 
             <div class="container" id="browse-section">
-                <!-- Search & Filter Controls -->
                 <div class="browse-toolbar">
-                    <div class="search-bar-hero">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                        <input type="text" id="main-search-input" placeholder="Search addons, worlds, creators, tags..." value="${sanitizeText(state.searchQuery)}">
-                        ${state.searchQuery ? `<button type="button" class="clear-btn" id="main-search-clear">&times;</button>` : ''}
-                    </div>
-
-                    <!-- Category Chips -->
-                    <div class="category-chips" role="tablist" aria-label="Addon Categories">
+                    <div class="category-chips">
                         ${Array.from(state.categories).map(cat => `
                             <button type="button" class="chip ${state.selectedCategory === cat ? 'active' : ''}" data-category="${sanitizeText(cat)}">
                                 ${sanitizeText(cat)}
@@ -293,26 +219,11 @@
                     </div>
                 </div>
 
-                <!-- Featured Addons Section (Shown when no search is active) -->
-                ${(!state.searchQuery && state.selectedCategory === 'All' && featuredPacks.length > 0) ? `
-                    <section class="featured-section">
-                        <div class="section-title-wrapper">
-                            <span class="pixel-block grass"></span>
-                            <h2 class="section-title">Featured Addons</h2>
-                        </div>
-                        <div class="featured-grid">
-                            ${featuredPacks.map(pack => renderFeaturedCard(pack)).join('')}
-                        </div>
-                    </section>
-                ` : ''}
-
-                <!-- Browse Header -->
                 <div class="browse-controls">
-                    <span class="results-count">
+                    <span style="font-weight: 700; color: var(--text-secondary);">
                         Showing <strong>${filteredPacks.length}</strong> ${filteredPacks.length === 1 ? 'addon' : 'addons'}
                     </span>
-                    <div class="sort-wrapper">
-                        <label for="sort-select" class="meta-label">Sort by:</label>
+                    <div>
                         <select id="sort-select" class="sort-select">
                             <option value="recommended" ${state.sortBy === 'recommended' ? 'selected' : ''}>Recommended</option>
                             <option value="newest" ${state.sortBy === 'newest' ? 'selected' : ''}>Recently Updated</option>
@@ -322,17 +233,14 @@
                     </div>
                 </div>
 
-                <!-- Main Addon Cards Grid -->
                 ${filteredPacks.length > 0 ? `
                     <div class="addon-grid">
                         ${filteredPacks.map(pack => renderAddonCard(pack)).join('')}
                     </div>
                 ` : `
-                    <div class="empty-state">
-                        <div class="empty-icon">🔍</div>
-                        <h2 class="empty-title">No Addons Found</h2>
-                        <p class="empty-desc">We couldn't find anything matching "${sanitizeText(state.searchQuery)}". Try clearing filters or searching for another term.</p>
-                        <button type="button" class="btn btn-secondary" id="reset-search-btn">Clear All Filters</button>
+                    <div class="mc-panel" style="text-align:center; padding: 48px;">
+                        <h2 style="font-family: var(--font-pixel); color: var(--accent-gold); margin-bottom:12px;">NO ADDONS FOUND</h2>
+                        <p style="color: var(--text-secondary);">Try clearing filters or changing your search terms.</p>
                     </div>
                 `}
             </div>
@@ -346,31 +254,6 @@
         }
     }
 
-    // Render Featured Card
-    function renderFeaturedCard(pack) {
-        const id = SchemaAdapter.getId(pack);
-        const name = SchemaAdapter.getName(pack);
-        const desc = SchemaAdapter.getDescription(pack);
-        const thumb = SchemaAdapter.getThumbnail(pack);
-        const cat = SchemaAdapter.getCategory(pack);
-
-        return `
-            <div class="featured-card" onclick="window.location.hash='#/pack/${id}'">
-                <span class="featured-badge-tag">Featured</span>
-                <img src="${sanitizeText(thumb)}" alt="${sanitizeText(name)}" class="featured-banner" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22 fill=%22%23202923%22><text x=%2250%%22 y=%2250%%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23a3b8aa%22>No Preview</text></svg>'">
-                <div class="featured-content">
-                    <h3 class="addon-title" style="font-size:1.3rem; margin-bottom:6px;">${sanitizeText(name)}</h3>
-                    <p class="addon-desc" style="-webkit-line-clamp: 3; margin-bottom:16px;">${sanitizeText(desc)}</p>
-                    <div class="card-footer-meta">
-                        <span class="tag">${sanitizeText(cat)}</span>
-                        <span class="btn btn-secondary" style="padding:4px 12px; font-size:0.8rem;">Explore &rarr;</span>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    // Render Standard Addon Card
     function renderAddonCard(pack) {
         const id = SchemaAdapter.getId(pack);
         const name = SchemaAdapter.getName(pack);
@@ -382,23 +265,19 @@
         const type = SchemaAdapter.getType(pack);
 
         return `
-            <article class="addon-card" onclick="window.location.hash='#/pack/${id}'" tabIndex="0" aria-label="${sanitizeText(name)} by ${sanitizeText(creator)}">
+            <article class="addon-card" onclick="window.location.hash='#/pack/${id}'">
                 <div class="card-media">
-                    <img src="${sanitizeText(thumb)}" alt="${sanitizeText(name)}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22 fill=%22%23202923%22><text x=%2250%%22 y=%2250%%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23a3b8aa%22>No Preview</text></svg>'">
+                    <img src="${sanitizeText(thumb)}" alt="${sanitizeText(name)}" loading="lazy" onerror="this.src='https://mahi902.github.io/BIVA/assets/76883807-b5e2-4837-bdf4-e5858cf838c3.png'">
                 </div>
                 <div class="card-body">
-                    <div class="card-header-row">
-                        <div>
-                            <h3 class="addon-title">${sanitizeText(name)}</h3>
-                            <span class="addon-creator">by ${sanitizeText(creator)}</span>
-                        </div>
+                    <div>
+                        <h3 class="addon-title">${sanitizeText(name)}</h3>
+                        <span class="addon-creator">by ${sanitizeText(creator)}</span>
                     </div>
                     <p class="addon-desc">${sanitizeText(desc)}</p>
                     <div class="card-footer-meta">
-                        <div class="rating-badge">
-                            ★ <span>${rating > 0 ? rating.toFixed(1) : 'N/A'}</span>
-                        </div>
-                        <div class="meta-tags">
+                        <span class="rating-badge">Rating: ${rating > 0 ? rating.toFixed(1) : 'N/A'}</span>
+                        <div style="display:flex; gap: 4px;">
                             <span class="tag">${sanitizeText(cat)}</span>
                             <span class="tag">.${sanitizeText(type)}</span>
                         </div>
@@ -408,18 +287,15 @@
         `;
     }
 
-    // 4. Addon Detail Screen View
     function renderPackDetailView(packId) {
         const pack = state.packs.find(p => SchemaAdapter.getId(p) === packId);
 
         if (!pack) {
             DOM.appView.innerHTML = `
-                <div class="container">
-                    <div class="empty-state">
-                        <div class="empty-icon">🧱</div>
-                        <h2 class="empty-title">Addon Not Found</h2>
-                        <p class="empty-desc">The requested addon ID "${sanitizeText(packId)}" doesn't exist in our catalog.</p>
-                        <a href="#/browse" class="btn btn-primary">Return to Discovery</a>
+                <div class="container" style="text-align:center; padding: 64px 24px;">
+                    <div class="mc-panel" style="padding: 48px;">
+                        <h2 style="font-family: var(--font-pixel); color: var(--accent-gold); margin-bottom:12px;">ADDON NOT FOUND</h2>
+                        <a href="#/browse" class="mc-btn mc-btn-green" style="margin-top:16px;">Return to Discover</a>
                     </div>
                 </div>
             `;
@@ -428,7 +304,6 @@
 
         const name = SchemaAdapter.getName(pack);
         const creator = SchemaAdapter.getCreator(pack);
-        const creatorUrl = SchemaAdapter.getCreatorUrl(pack);
         const desc = SchemaAdapter.getDescription(pack);
         const thumb = SchemaAdapter.getThumbnail(pack);
         const version = SchemaAdapter.getVersion(pack);
@@ -439,127 +314,71 @@
         const fileType = SchemaAdapter.getType(pack);
         const cat = SchemaAdapter.getCategory(pack);
         const screenshots = SchemaAdapter.getScreenshots(pack);
-        const changelog = SchemaAdapter.getChangelog(pack);
-        const tags = SchemaAdapter.getTags(pack);
-
-        // Format download label
-        let downloadLabel = `Download .${fileType}`;
-        if (fileType.toLowerCase() === 'mcpack') downloadLabel = 'Download .mcpack';
-        if (fileType.toLowerCase() === 'mcaddon') downloadLabel = 'Download .mcaddon';
-        if (fileType.toLowerCase() === 'mcworld') downloadLabel = 'Download .mcworld';
 
         const html = `
             <div class="detail-container">
-                <div class="back-btn-wrapper">
-                    <a href="#/browse" class="btn btn-secondary">&larr; Back to Addons</a>
+                <div style="margin-bottom: 24px;">
+                    <a href="#/browse" class="mc-btn mc-btn-stone">&larr; Back to Addons</a>
                 </div>
 
-                <!-- Addon Banner Header -->
-                <header class="detail-header">
-                    <img src="${sanitizeText(thumb)}" alt="${sanitizeText(name)}" class="detail-icon" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22 fill=%22%23202923%22></svg>'">
-                    <div class="detail-title-area">
+                <header class="detail-header mc-panel">
+                    <img src="${sanitizeText(thumb)}" alt="${sanitizeText(name)}" class="detail-icon" onerror="this.src='https://mahi902.github.io/BIVA/assets/76883807-b5e2-4837-bdf4-e5858cf838c3.png'">
+                    <div>
                         <h1>${sanitizeText(name)}</h1>
-                        <div class="detail-meta-line">
-                            <span>by ${creatorUrl ? `<a href="${sanitizeText(creatorUrl)}" target="_blank" rel="noopener" style="text-decoration:underline; font-weight:700;">${sanitizeText(creator)}</a>` : `<strong>${sanitizeText(creator)}</strong>`}</span>
-                            <span>•</span>
-                            <span class="rating-badge">★ ${rating > 0 ? rating.toFixed(1) : 'Unrated'}</span>
-                            <span>•</span>
-                            <span class="tag">${sanitizeText(cat)}</span>
-                        </div>
+                        <p style="color: var(--text-secondary);">by <strong>${sanitizeText(creator)}</strong> • Rating: ${rating > 0 ? rating.toFixed(1) : 'Unrated'} • <span class="tag">${sanitizeText(cat)}</span></p>
                     </div>
-                    <a href="${sanitizeText(downloadUrl)}" class="btn btn-primary" download target="_blank" rel="noopener">
-                        ${sanitizeText(downloadLabel)}
+                    <a href="${sanitizeText(downloadUrl)}" class="mc-btn mc-btn-green" download target="_blank" rel="noopener">
+                        Download .${sanitizeText(fileType)}
                     </a>
                 </header>
 
                 <div class="detail-body-layout">
-                    <!-- Main Content Column -->
                     <main>
-                        <!-- Description -->
-                        <section class="detail-section">
+                        <section class="detail-section mc-panel">
                             <h2 class="detail-section-title">About this Addon</h2>
-                            <p style="white-space: pre-line; color: var(--text-secondary); line-height: 1.7;">
-                                ${sanitizeText(desc)}
-                            </p>
+                            <p style="white-space: pre-line; color: var(--text-secondary);">${sanitizeText(desc)}</p>
                         </section>
 
-                        <!-- Screenshots Gallery (Only render if present) -->
                         ${screenshots.length > 0 ? `
-                            <section class="detail-section">
-                                <h2 class="detail-section-title">Screenshots & Media</h2>
+                            <section class="detail-section mc-panel">
+                                <h2 class="detail-section-title">Screenshots</h2>
                                 <div class="gallery-grid">
-                                    ${screenshots.map((imgUrl, idx) => `
-                                        <div class="gallery-item" data-img="${sanitizeText(imgUrl)}" data-caption="${sanitizeText(name)} screenshot ${idx + 1}">
-                                            <img src="${sanitizeText(imgUrl)}" alt="Screenshot ${idx + 1}" loading="lazy">
+                                    ${screenshots.map((img, idx) => `
+                                        <div class="gallery-item" data-img="${sanitizeText(img)}">
+                                            <img src="${sanitizeText(img)}" alt="Screenshot ${idx + 1}">
                                         </div>
                                     `).join('')}
                                 </div>
                             </section>
                         ` : ''}
 
-                        <!-- Changelog Section (Optional) -->
-                        ${changelog ? `
-                            <section class="detail-section">
-                                <h2 class="detail-section-title">Changelog</h2>
-                                <p style="white-space: pre-line; color: var(--text-secondary); font-size: 0.9rem;">
-                                    ${sanitizeText(changelog)}
-                                </p>
-                            </section>
-                        ` : ''}
-
-                        <!-- Embedded Rating Section -->
-                        <section class="detail-section">
+                        <section class="detail-section mc-panel">
                             <h2 class="detail-section-title">Rate this Addon</h2>
                             ${ratingUrl ? `
                                 <div class="rating-iframe-wrapper">
-                                    <iframe src="${sanitizeText(ratingUrl)}" class="rating-iframe" title="Rate ${sanitizeText(name)}" sandbox="allow-scripts allow-forms allow-same-origin" loading="lazy"></iframe>
+                                    <iframe src="${sanitizeText(ratingUrl)}" class="rating-iframe" title="Rate ${sanitizeText(name)}" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
                                 </div>
-                            ` : `
-                                <p style="color: var(--text-muted); font-size: 0.9rem;">Ratings aren't available for this addon yet.</p>
-                            `}
+                            ` : `<p style="color: var(--text-muted);">Ratings aren't available for this addon yet.</p>`}
                         </section>
                     </main>
 
-                    <!-- Sidebar Metadata Panel -->
                     <aside>
-                        <div class="sidebar-box">
-                            <div class="download-box" style="margin-bottom: 24px;">
-                                <a href="${sanitizeText(downloadUrl)}" class="btn btn-primary" style="width: 100%;" download target="_blank" rel="noopener">
-                                    ${sanitizeText(downloadLabel)}
+                        <div class="mc-panel" style="padding: 24px;">
+                            <div style="margin-bottom: 20px; text-align:center;">
+                                <a href="${sanitizeText(downloadUrl)}" class="mc-btn mc-btn-green" style="width: 100%;" download target="_blank" rel="noopener">
+                                    Download .${sanitizeText(fileType)}
                                 </a>
-                                <p class="download-notice">After downloading, open the file with Minecraft Bedrock Edition to automatically import it.</p>
+                                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">After downloading, open the file with Minecraft to import it.</p>
                             </div>
 
-                            <div class="meta-table">
-                                <div class="meta-row">
-                                    <span class="meta-label">Version</span>
-                                    <span class="meta-value">${sanitizeText(version)}</span>
-                                </div>
-                                <div class="meta-row">
-                                    <span class="meta-label">MC Compatibility</span>
-                                    <span class="meta-value">${sanitizeText(mcVersion)}</span>
-                                </div>
-                                <div class="meta-row">
-                                    <span class="meta-label">File Extension</span>
-                                    <span class="meta-value">.${sanitizeText(fileType)}</span>
-                                </div>
-                                <div class="meta-row">
-                                    <span class="meta-label">Category</span>
-                                    <span class="meta-value">${sanitizeText(cat)}</span>
-                                </div>
+                            <div style="font-size: 0.85rem; display: flex; flex-direction: column; gap: 8px;">
+                                <div style="display:flex; justify-content:space-between;"><span>Version:</span><strong>${sanitizeText(version)}</strong></div>
+                                <div style="display:flex; justify-content:space-between;"><span>Minecraft:</span><strong>${sanitizeText(mcVersion)}</strong></div>
+                                <div style="display:flex; justify-content:space-between;"><span>File Type:</span><strong>.${sanitizeText(fileType)}</strong></div>
                             </div>
 
-                            ${tags.length > 0 ? `
-                                <div style="margin-top: 16px;">
-                                    <span class="meta-label" style="display:block; margin-bottom:8px;">Tags</span>
-                                    <div class="meta-tags">
-                                        ${tags.map(tag => `<span class="tag">#${sanitizeText(tag)}</span>`).join('')}
-                                    </div>
-                                </div>
-                            ` : ''}
-
-                            <button type="button" class="btn btn-secondary" id="share-btn" style="width: 100%; margin-top: 20px;">
-                                🔗 Share Addon
+                            <button type="button" class="mc-btn mc-btn-stone" id="share-btn" style="width: 100%; margin-top: 20px;">
+                                Share Link
                             </button>
                         </div>
                     </aside>
@@ -569,64 +388,37 @@
 
         DOM.appView.innerHTML = html;
 
-        // Bind Detail View Interactions
-        bindDetailEvents(name);
+        document.querySelectorAll('.gallery-item').forEach(item => {
+            item.addEventListener('click', () => {
+                DOM.lightboxImg.src = item.dataset.img;
+                DOM.lightbox.classList.add('active');
+            });
+        });
+
+        document.getElementById('share-btn')?.addEventListener('click', () => {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(window.location.href);
+                showToast(`Copied link to ${name}!`);
+            }
+        });
     }
 
-    // 5. About Philosophy View
     function renderAboutView() {
         DOM.appView.innerHTML = `
             <div class="container" style="max-width: 800px;">
-                <section class="detail-section" style="margin-top: 32px;">
-                    <div style="text-align:center; margin-bottom: 24px;">
-                        <span class="pixel-block grass" style="width:48px; height:48px;"></span>
-                        <h1 style="font-size: 2.2rem; margin-top:12px;">About BIVA</h1>
-                        <p class="hero-motto">“Enhancing Minecraft, without losing the vanilla experience.”</p>
-                    </div>
-
-                    <h2 class="detail-section-title">Our Philosophy</h2>
-                    <p style="color: var(--text-secondary); line-height: 1.8; margin-bottom: 20px;">
-                        Minecraft Bedrock is an incredible sandbox, but many modern modpacks overcomplicate the core loop with unfitting mechanics, cluttered interfaces, or unvanilla aesthetics.
+                <section class="mc-panel" style="padding: 32px; margin-top: 32px;">
+                    <img src="https://mahi902.github.io/BIVA/assets/BIVA-8-12-2026.png" alt="BIVA Logo" style="height:48px; margin:0 auto 16px;">
+                    <h2 class="detail-section-title" style="text-align:center; font-size:1.1rem;">OUR PHILOSOPHY</h2>
+                    <p style="color: var(--text-secondary); line-height: 1.8; margin-bottom: 16px;">
+                        BIVA is a platform dedicated to Bedrock Edition addons that complement standard Minecraft gameplay without altering its iconic aesthetic or survival identity.
                     </p>
-                    <p style="color: var(--text-secondary); line-height: 1.8; margin-bottom: 20px;">
-                        <strong>BIVA (Better Immersive Vanilla Addons)</strong> is a curated platform built specifically to index high-quality Bedrock Edition addons that expand the game while respecting Mojang's original visual design, progression pacing, and charm.
-                    </p>
-
-                    <h2 class="detail-section-title" style="margin-top:32px;">Features</h2>
-                    <ul style="color: var(--text-secondary); padding-left: 20px; line-height: 1.8;">
-                        <li>Carefully indexed <code>.mcaddon</code>, <code>.mcpack</code>, and <code>.mcworld</code> files.</li>
-                        <li>Direct creator attribution and download links.</li>
-                        <li>Lightweight, privacy-respecting client with zero bloat.</li>
-                    </ul>
                 </section>
             </div>
         `;
     }
 
-    // --- Event Bindings ---
-
     function bindBrowseEvents() {
-        const mainInput = document.getElementById('main-search-input');
-        const mainClear = document.getElementById('main-search-clear');
         const sortSelect = document.getElementById('sort-select');
-        const resetBtn = document.getElementById('reset-search-btn');
-
-        if (mainInput) {
-            mainInput.addEventListener('input', debounce((e) => {
-                state.searchQuery = e.target.value;
-                syncSearchInputs(e.target.value);
-                renderBrowseView();
-            }, CONFIG.DEBOUNCE_MS));
-        }
-
-        if (mainClear) {
-            mainClear.addEventListener('click', () => {
-                state.searchQuery = '';
-                syncSearchInputs('');
-                renderBrowseView();
-            });
-        }
-
         if (sortSelect) {
             sortSelect.addEventListener('change', (e) => {
                 state.sortBy = e.target.value;
@@ -634,16 +426,6 @@
             });
         }
 
-        if (resetBtn) {
-            resetBtn.addEventListener('click', () => {
-                state.searchQuery = '';
-                state.selectedCategory = 'All';
-                syncSearchInputs('');
-                renderBrowseView();
-            });
-        }
-
-        // Category Chip Click Handler
         document.querySelectorAll('.chip').forEach(chip => {
             chip.addEventListener('click', (e) => {
                 state.selectedCategory = e.currentTarget.dataset.category;
@@ -652,52 +434,10 @@
         });
     }
 
-    function bindDetailEvents(packName) {
-        // Screenshot Lightbox Click Handlers
-        document.querySelectorAll('.gallery-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const imgUrl = item.dataset.img;
-                const caption = item.dataset.caption;
-                openLightbox(imgUrl, caption);
-            });
-        });
-
-        // Share Button Clipboard API
-        document.getElementById('share-btn')?.addEventListener('click', () => {
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(window.location.href);
-                showToast(`Copied link to ${packName}!`);
-            }
-        });
-    }
-
-    function syncSearchInputs(value) {
-        if (DOM.navSearchInput && DOM.navSearchInput !== document.activeElement) {
-            DOM.navSearchInput.value = value;
-        }
-        if (DOM.navSearchClear) {
-            DOM.navSearchClear.classList.toggle('hidden', !value);
-        }
-    }
-
-    // --- Lightbox Functionality ---
-    function openLightbox(url, caption) {
-        DOM.lightboxImg.src = url;
-        DOM.lightboxCaption.textContent = caption || '';
-        DOM.lightbox.classList.add('active');
-        DOM.lightbox.focus();
-    }
-
-    function closeLightbox() {
-        DOM.lightbox.classList.remove('active');
-        DOM.lightboxImg.src = '';
-    }
-
-    // --- Global Setup & Event Listeners ---
     function initGlobalEvents() {
-        // Nav Search Input Synchronization
         DOM.navSearchInput.addEventListener('input', debounce((e) => {
             state.searchQuery = e.target.value;
+            DOM.navSearchClear.classList.toggle('hidden', !e.target.value);
             if (state.activeView !== 'browse') {
                 window.location.hash = '#/browse';
             } else {
@@ -707,53 +447,37 @@
 
         DOM.navSearchClear.addEventListener('click', () => {
             state.searchQuery = '';
-            syncSearchInputs('');
+            DOM.navSearchInput.value = '';
+            DOM.navSearchClear.classList.add('hidden');
             if (state.activeView === 'browse') renderBrowseView();
         });
 
-        // Theme Toggle Handler
         DOM.themeToggle.addEventListener('click', () => {
             state.theme = state.theme === 'dark' ? 'light' : 'dark';
             document.documentElement.setAttribute('data-theme', state.theme);
             localStorage.setItem('biva_theme', state.theme);
         });
 
-        // Mobile Menu Drawer Handler
         DOM.mobileToggle.addEventListener('click', () => {
-            const isExpanded = DOM.mobileToggle.getAttribute('aria-expanded') === 'true';
-            DOM.mobileToggle.setAttribute('aria-expanded', !isExpanded);
             DOM.navMenu.classList.toggle('mobile-open');
         });
 
-        // Lightbox Modal Keyboard & Click Events
-        DOM.lightboxClose.addEventListener('click', closeLightbox);
-        DOM.lightboxBackdrop.addEventListener('click', closeLightbox);
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && DOM.lightbox.classList.contains('active')) {
-                closeLightbox();
-            }
-        });
+        DOM.lightboxClose.addEventListener('click', () => DOM.lightbox.classList.remove('active'));
+        DOM.lightboxBackdrop.addEventListener('click', () => DOM.lightbox.classList.remove('active'));
 
-        // Hash Routing Listener
         window.addEventListener('hashchange', handleRoute);
     }
 
-    // --- Application Initialization ---
     function init() {
         cacheDOM();
-        
-        // Restore stored theme preference
         document.documentElement.setAttribute('data-theme', state.theme);
-        
         initGlobalEvents();
         fetchPacks();
     }
 
-    // Run when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
         init();
     }
-
 })();
