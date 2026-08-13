@@ -22,7 +22,7 @@
   },
   {
     "id": "vibrant-lighting",
-    "name": "Vibrant Lightning",
+    "name": "Vibrant Lighting",
     "description": "A simple lighting utility for Minecraft Bedrock. Use Full Bright, check light levels, and get warnings when areas are too dark.",
     "creator": "MApro7473",
     "creatorUrl": "https://github.com/mahi902",
@@ -31,7 +31,7 @@
     "category": "Lighting",
     "type": "mcpack",
     "rating": 4.8,
-    "ratingUrl": "",
+    "ratingUrl": "https://docs.google.com/forms/d/e/1FAIpQLScN_LM3F5oEWB0HwpsHbxW-1fbHn8Q9AC95_0jfq4d6oT2jvA/viewform?usp=pp_url&entry.855870055=Vibrant+Lighting&entry.1569124134=5",
     "download": "https://mahi902.github.io/BIVA/archive/Vibrant_Lighting_1.3.3.mcpack",
     "thumbnail": "https://mahi902.github.io/BIVA/assets/yicon.png",
     "screenshots": [
