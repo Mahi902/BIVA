@@ -5,13 +5,13 @@
     "description": "[Beta API Required] A simple, powerful economy for Minecraft Bedrock. Buy, sell, send Aura, and browse a fully paginated item catalog.",
     "creator": "MApro7473",
     "creatorUrl": "https://github.com/mahi902",
-    "version": "1.0.3",
+    "version": "1.6.0",
     "mcVersion": "26.32+",
     "category": "Economy",
     "type": "mcpack",
     "rating": 5.0,
     "ratingUrl": "https://docs.google.com/forms/d/e/1FAIpQLScN_LM3F5oEWB0HwpsHbxW-1fbHn8Q9AC95_0jfq4d6oT2jvA/viewform?usp=pp_url&entry.855870055=Aura+Store&entry.1569124134=5",
-    "download": "https://mahi902.github.io/BIVA/archive/Aura_Store_26.32_v1.0.3.mcpack",
+    "download": "https://mahi902.github.io/BIVA/archive/Aura_Store_26.32_v1.6.0.mcpack",
     "thumbnail": "https://mahi902.github.io/BIVA/assets/zicon.png",
     "screenshots": [
       "https://mahi902.github.io/BIVA/assets/001.jpg"
