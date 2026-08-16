@@ -64,8 +64,8 @@
     "updatedDate": "2026-15-08"
   },
   {
-    "id": "Mineable Spawners",
-    "name": "mineable-spawners",
+    "id": "mineable-spawners",
+    "name": "Mineable Spawners",
     "description": "Mine monster spawners with Diamond or Netherite Pickaxes using Silk Touch and get the spawner back.",
     "creator": "MApro7473",
     "creatorUrl": "https://github.com/mahi902",
