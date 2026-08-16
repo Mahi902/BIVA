@@ -71,7 +71,7 @@
     "creatorUrl": "https://github.com/mahi902",
     "version": "1.2.1",
     "mcVersion": "26.32+",
-    "category": "Farm",
+    "category": "Mobs",
     "type": "mcpack",
     "rating": 4.9,
     "ratingUrl": "https://docs.google.com/forms/d/e/1FAIpQLScN_LM3F5oEWB0HwpsHbxW-1fbHn8Q9AC95_0jfq4d6oT2jvA/viewform?usp=pp_url&entry.855870055=Mineable+Spawners&entry.1569124134=5",
@@ -79,7 +79,7 @@
     "thumbnail": "https://mahi902.github.io/BIVA/assets/AAB.png",
     "screenshots": [],
     "changelog": "v1.2.1: Removed the pig spawn egg drop testing feature.",
-    "tags": ["farming", "mob", "loot", "exp"],
+    "tags": ["farming", "mobs", "loot", "exp"],
     "featured": false,
     "updatedDate": "2026-16-08"
   },
