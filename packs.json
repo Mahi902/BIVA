@@ -41,7 +41,7 @@
     "changelog": "",
     "tags": ["light", "torch", "utility", "full"],
     "featured": false,
-    "updatedDate": "2026-02-05"
+    "updatedDate": "2026-14-08"
   },
   {
     "id": "smart-homes",
@@ -54,36 +54,34 @@
     "category": "Travel",
     "type": "mcpack",
     "rating": 4.9,
-    "ratingUrl": "",
-    "download": "mahi902.github.io/BIVA/archive/Smart_Homes_2.0.1_Beta_2.9.0.mcpack",
+    "ratingUrl": "https://docs.google.com/forms/d/e/1FAIpQLScN_LM3F5oEWB0HwpsHbxW-1fbHn8Q9AC95_0jfq4d6oT2jvA/viewform?usp=pp_url&entry.855870055=Smart+Homes&entry.1569124134=5",
+    "download": "https://mahi902.github.io/BIVA/archive/Smart_Homes_2.0.1_Beta_2.9.0.mcpack",
     "thumbnail": "https://mahi902.github.io/BIVA/assets/AAA.png",
-    "screenshots": [
-      ""
-    ],
+    "screenshots": [],
     "changelog": "v2.0.1: Added the map command and its functionality.",
     "tags": ["Spawn", "Waypoint", "Home", "TP"],
     "featured": true,
-    "updatedDate": "2026-01-28"
+    "updatedDate": "2026-15-08"
   },
   {
-    "id": "bedrock-fps-boost",
-    "name": "Bedrock FPS Boost & Fog Tweak",
-    "description": "A lightweight optimization resource pack that reduces unnecessary particle calculations, optimizes entity rendering distance, and provides custom fog distance sliders.",
-    "creator": "OptiRock",
-    "creatorUrl": "",
-    "version": "3.0.4",
-    "mcVersion": "1.20+",
-    "category": "Optimization",
+    "id": "Mineable Spawners",
+    "name": "mineable-spawners",
+    "description": "Mine monster spawners with Diamond or Netherite Pickaxes using Silk Touch and get the spawner back.",
+    "creator": "MApro7473",
+    "creatorUrl": "https://github.com/mahi902",
+    "version": "1.2.1",
+    "mcVersion": "26.32+",
+    "category": "Farm",
     "type": "mcpack",
-    "rating": 4.7,
-    "ratingUrl": "https://example.com/rating-frame?id=bedrock-fps-boost",
-    "download": "https://github.com/mahi902/BIVA/releases/download/v1.0/fps-boost.mcpack",
-    "thumbnail": "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=500&auto=format&fit=crop&q=80",
+    "rating": 4.9,
+    "ratingUrl": "https://docs.google.com/forms/d/e/1FAIpQLScN_LM3F5oEWB0HwpsHbxW-1fbHn8Q9AC95_0jfq4d6oT2jvA/viewform?usp=pp_url&entry.855870055=Mineable+Spawners&entry.1569124134=5",
+    "download": "https://mahi902.github.io/BIVA/archive/Mineable_Spawners_v1.2.1_Beta.mcpack",
+    "thumbnail": "https://mahi902.github.io/BIVA/assets/AAB.png",
     "screenshots": [],
-    "changelog": "v3.0.4: Reduced memory footprint during dragon fight particles.",
-    "tags": ["optimization", "fps", "performance", "lag-fix"],
+    "changelog": "v1.2.1: Removed the pig spawn egg drop testing feature.",
+    "tags": ["farming", "mob", "loot", "exp"],
     "featured": false,
-    "updatedDate": "2026-02-08"
+    "updatedDate": "2026-16-08"
   },
   {
     "id": "subtle-foliage",
